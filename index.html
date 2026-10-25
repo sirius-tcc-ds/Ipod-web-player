@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>iPod Classic Web Player</title>
+    <style>
+        :root {
+            --ipod-bg: #e2e2e2;
+            --ipod-border: #bcbcbc;
+            --screen-border: #333;
+            --wheel-bg: #f5f5f5;
+            --wheel-border: #d0d0d0;
+            --wheel-active: #e0e0e0;
+            --wheel-text: #555555;
+            --text-color: #000;
+        }
+
+        .dark-theme {
+            --ipod-bg: #222222;
+            --ipod-border: #111111;
+            --screen-border: #111;
+            --wheel-bg: #333333;
+            --wheel-border: #444444;
+            --wheel-active: #4a4a4a;
+            --wheel-text: #d0d0d0; /* Texto claro no tema escuro */
+            --text-color: #fff;
+        }
+
+        .blue-theme {
+            --ipod-bg: #1c3b57;
+            --ipod-border: #122638;
+            --screen-border: #0a1722;
+            --wheel-bg: #2c5275;
+            --wheel-border: #386791;
+            --wheel-active: #3a6d9b;
+            --wheel-text: #ffffff; /* Texto branco no tema azul */
+            --text-color: #fff;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100vh;
+            background: #000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* iPod Chassis ocupando tela inteira em celulares */
+        .ipod {
+            width: 100vw;
+            height: 100vh;
+            max-width: 420px;
+            max-height: 850px;
+            background: var(--ipod-bg);
+            border: none;
+            border-radius: 0;
+            box-shadow: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 25px 20px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        @media (min-width: 480px) {
+            .ipod {
+                border: 3px solid var(--ipod-border);
+                border-radius: 35px;
+                box-shadow: 0 20px 40px rgba(0,0,0,0.5), inset 0 2px 5px rgba(255,255,255,0.6);
+                height: 92vh;
+            }
+        }
+
+        /* Tela proporcional */
+        .screen {
+            width: 100%;
+            height: 42%;
+            background: #fff;
+            border: 2px solid var(--screen-border);
+            border-radius: 8px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.15);
+        }
+
+        .screen-header {
+            background: linear-gradient(to bottom, #d6d6d6, #b5b5b5);
+            border-bottom: 1px solid #999;
+            padding: 6px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #222;
+        }
+
+        .screen-body {
+            flex: 1;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .menu-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .menu-item {
+            padding: 10px 14px;
+            font-size: 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: #000;
+            border-bottom: 1px solid #f0f0f0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .menu-item.selected {
+            background: linear-gradient(to bottom, #3b82f6, #1d4ed8);
+            color: #fff;
+        }
+
+        .menu-item.selected::after {
+            content: "›";
+            font-weight: bold;
+        }
+
+        /* Now Playing View */
+        .now-playing {
+            display: none;
+            flex-direction: column;
+            height: 100%;
+            padding: 12px;
+            box-sizing: border-box;
+            background: #fff;
+            color: #000;
+            justify-content: space-between;
+        }
+
+        .now-playing.active {
+            display: flex;
+        }
+
+        .np-info {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .np-art {
+            width: 75px;
+            height: 75px;
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            flex-shrink: 0;
+        }
+
+        .np-meta {
+            overflow: hidden;
+        }
+
+        .np-title {
+            font-size: 14px;
+            font-weight: bold;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .np-artist, .np-album {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .np-progress-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .np-times {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            color: #555;
+        }
+
+        .np-bar {
+            width: 100%;
+            height: 8px;
+            background: #e2e2e2;
+            border: 1px solid #bbb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .np-bar-fill {
+            height: 100%;
+            background: linear-gradient(to bottom, #5c93f8, #1d52d8);
+            width: 0%;
+        }
+
+        .np-status-icon {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        /* Click Wheel proporcional com cor de texto dinâmica */
+        .click-wheel {
+            width: 210px;
+            height: 210px;
+            background: var(--wheel-bg);
+            border: 2px solid var(--wheel-border);
+            border-radius: 50%;
+            position: relative;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.15), inset 0 2px 5px rgba(255,255,255,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+
+        .center-button {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(to bottom, #f9f9f9, #e6e6e6);
+            border: 1px solid #d0d0d0;
+            border-radius: 50%;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            cursor: pointer;
+            z-index: 2;
+        }
+
+        .center-button:active {
+            background: var(--wheel-active);
+        }
+
+        .wheel-btn {
+            position: absolute;
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--wheel-text); /* Cor dinâmica conforme o tema */
+            cursor: pointer;
+            z-index: 3;
+            transition: color 0.3s ease;
+        }
+
+        .btn-menu { top: 14px; }
+        .btn-prev { left: 18px; }
+        .btn-next { right: 18px; }
+        .btn-play { bottom: 14px; }
+
+        #text-view {
+            display: none;
+            padding: 12px;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #000;
+            overflow-y: auto;
+            height: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body class="dark-theme">
+
+    <div class="ipod">
+        <!-- Tela -->
+        <div class="screen">
+            <div class="screen-header">
+                <span id="screen-title">iPod</span>
+                <span id="battery-icon">🔋 100%</span>
+            </div>
+            <div class="screen-body">
+                <!-- Menu Principal -->
+                <ul id="main-menu" class="menu-list">
+                    <li class="menu-item selected" data-action="playlist">Músicas (<span id="track-count">2</span>)</li>
+                    <li class="menu-item" data-action="nowplaying">Tocando Agora</li>
+                    <li class="menu-item" data-action="addmusic">Adicionar MP3</li>
+                    <li class="menu-item" data-action="settings">Configurações & Temas</li>
+                    <li class="menu-item" data-action="about">Sobre</li>
+                </ul>
+
+                <!-- Submenu de Músicas -->
+                <ul id="playlist-menu" class="menu-list" style="display: none;"></ul>
+
+                <!-- Submenu de Configurações -->
+                <ul id="settings-menu" class="menu-list" style="display: none;">
+                    <li class="menu-item selected" data-theme="dark-theme">Tema: Clássico Preto</li>
+                    <li class="menu-item" data-theme="blue-theme">Tema: Azul Noturno</li>
+                    <li class="menu-item" data-theme="">Tema: Prata Original</li>
+                </ul>
+
+                <!-- Tela Now Playing -->
+                <div id="now-playing-view" class="now-playing">
+                    <div class="np-info">
+                        <div class="np-art">🎵</div>
+                        <div class="np-meta">
+                            <div class="np-title" id="np-title">Nenhuma música</div>
+                            <div class="np-artist" id="np-artist">-</div>
+                            <div class="np-album" id="np-album">-</div>
+                        </div>
+                    </div>
+                    <div class="np-status-icon" id="np-status">▶</div>
+                    <div class="np-progress-container">
+                        <div class="np-times">
+                            <span id="np-current-time">0:00</span>
+                            <span id="np-total-time">0:00</span>
+                        </div>
+                        <div class="np-bar">
+                            <div class="np-bar-fill" id="np-bar-fill"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tela genérica de texto -->
+                <div id="text-view">
+                    <p id="text-content"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Click Wheel -->
+        <div class="click-wheel" id="click-wheel">
+            <div class="wheel-btn btn-menu" id="btn-menu">MENU</div>
+            <div class="wheel-btn btn-prev" id="btn-prev">⏮</div>
+            <div class="wheel-btn btn-next" id="btn-next">⏭</div>
+            <div class="wheel-btn btn-play" id="btn-play">⏯</div>
+            <div class="center-button" id="btn-center"></div>
+        </div>
+    </div>
+
+    <!-- Input de arquivo oculto com suporte acumulativo -->
+    <input type="file" id="audio-file-input" accept="audio/*" multiple style="display: none;">
+    <audio id="audio-player"></audio>
+
+    <script>
+        let audioCtx = null;
+        function playClickSound() {
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.03);
+                gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.03);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.03);
+            } catch(e) {}
+        }
+
+        // Sincronização real da bateria do celular
+        const batteryIconEl = document.getElementById('battery-icon');
+        if (navigator.getBattery) {
+            navigator.getBattery().then(battery => {
+                function updateBattery() {
+                    const level = Math.floor(battery.level * 100);
+                    const charging = battery.charging ? ' ⚡' : '';
+                    batteryIconEl.innerText = `🔋 ${level}%${charging}`;
+                }
+                updateBattery();
+                battery.addEventListener('levelchange', updateBattery);
+                battery.addEventListener('chargingchange', updateBattery);
+            });
+        }
+
+        const state = {
+            currentScreen: 'main', // main, playlist, settings, now-playing, text
+            selectedIndex: 0,
+            menuStack: [],
+            isPlaying: false,
+            currentTrackIndex: 0,
+            playlist: [
+                { title: "Exemplo - Faixa 1", artist: "Artista Padrão", album: "Álbuns Clássicos", src: "" },
+                { title: "Exemplo - Faixa 2", artist: "Artista Padrão", album: "Álbuns Clássicos", src: "" }
+            ]
+        };
+
+        const audio = document.getElementById('audio-player');
+
+        const screenTitle = document.getElementById('screen-title');
+        const mainMenu = document.getElementById('main-menu');
+        const playlistMenu = document.getElementById('playlist-menu');
+        const settingsMenu = document.getElementById('settings-menu');
+        const nowPlayingView = document.getElementById('now-playing-view');
+        const textView = document.getElementById('text-view');
+        const textContent = document.getElementById('text-content');
+        const trackCountEl = document.getElementById('track-count');
+
+        const npTitle = document.getElementById('np-title');
+        const npArtist = document.getElementById('np-artist');
+        const npAlbum = document.getElementById('np-album');
+        const npStatus = document.getElementById('np-status');
+        const npCurrentTime = document.getElementById('np-current-time');
+        const npTotalTime = document.getElementById('np-total-time');
+        const npBarFill = document.getElementById('np-bar-fill');
+
+        function updateScreen() {
+            mainMenu.style.display = 'none';
+            playlistMenu.style.display = 'none';
+            settingsMenu.style.display = 'none';
+            nowPlayingView.classList.remove('active');
+            textView.style.display = 'none';
+            trackCountEl.innerText = state.playlist.length;
+
+            if (state.currentScreen === 'main') {
+                screenTitle.innerText = 'iPod';
+                mainMenu.style.display = 'block';
+                updateSelection(mainMenu);
+            } else if (state.currentScreen === 'playlist') {
+                screenTitle.innerText = 'Músicas';
+                playlistMenu.style.display = 'block';
+                renderPlaylist();
+                updateSelection(playlistMenu);
+            } else if (state.currentScreen === 'settings') {
+                screenTitle.innerText = 'Configurações';
+                settingsMenu.style.display = 'block';
+                updateSelection(settingsMenu);
+            } else if (state.currentScreen === 'now-playing') {
+                screenTitle.innerText = 'Tocando Agora';
+                nowPlayingView.classList.add('active');
+            } else if (state.currentScreen === 'text') {
+                textView.style.display = 'block';
+            }
+        }
+
+        function renderPlaylist() {
+            playlistMenu.innerHTML = '';
+            state.playlist.forEach((track, index) => {
+                const li = document.createElement('li');
+                li.className = `menu-item ${index === state.selectedIndex ? 'selected' : ''}`;
+                li.innerText = track.title;
+                playlistMenu.appendChild(li);
+            });
+        }
+
+        function updateSelection(menuElement) {
+            const items = menuElement.querySelectorAll('.menu-item');
+            items.forEach((item, index) => {
+                if (index === state.selectedIndex) {
+                    item.classList.add('selected');
+                    item.scrollIntoView({ block: 'nearest' });
+                } else {
+                    item.classList.remove('selected');
+                }
+            });
+        }
+
+        document.getElementById('btn-menu').addEventListener('click', () => {
+            playClickSound();
+            if (state.menuStack.length > 0) {
+                state.currentScreen = state.menuStack.pop();
+                state.selectedIndex = 0;
+                updateScreen();
+            }
+        });
+
+        document.getElementById('btn-center').addEventListener('click', () => {
+            playClickSound();
+            if (state.currentScreen === 'main') {
+                const selectedItem = mainMenu.querySelectorAll('.menu-item')[state.selectedIndex];
+                const action = selectedItem.getAttribute('data-action');
+                if (action === 'playlist') {
+                    state.menuStack.push('main');
+                    state.currentScreen = 'playlist';
+                    state.selectedIndex = 0;
+                    updateScreen();
+                } else if (action === 'nowplaying') {
+                    state.menuStack.push('main');
+                    state.currentScreen = 'now-playing';
+                    updateScreen();
+                } else if (action === 'addmusic') {
+                    document.getElementById('audio-file-input').click();
+                } else if (action === 'settings') {
+                    state.menuStack.push('main');
+                    state.currentScreen = 'settings';
+                    state.selectedIndex = 0;
+                    updateScreen();
+                } else if (action === 'about') {
+                    state.menuStack.push('main');
+                    state.currentScreen = 'text';
+                    screenTitle.innerText = 'Sobre';
+                    textContent.innerText = 'iPod Classic Web Player\n\nInspirado no projeto open-source Classipod. Feito com HTML, CSS e JavaScript para trazer de volta a nostalgia dos anos 2000 direto no seu celular!';
+                    updateScreen();
+                }
+            } else if (state.currentScreen === 'playlist') {
+                state.currentTrackIndex = state.selectedIndex;
+                playTrack(state.currentTrackIndex);
+                state.menuStack.push('playlist');
+                state.currentScreen = 'now-playing';
+                updateScreen();
+            } else if (state.currentScreen === 'settings') {
+                const selectedItem = settingsMenu.querySelectorAll('.menu-item')[state.selectedIndex];
+                const themeClass = selectedItem.getAttribute('data-theme');
+                document.body.className = themeClass;
+            }
+        });
+
+        document.getElementById('btn-play').addEventListener('click', () => {
+            playClickSound();
+            togglePlay();
+        });
+
+        document.getElementById('btn-next').addEventListener('click', () => {
+            playClickSound();
+            nextTrack();
+        });
+
+        document.getElementById('btn-prev').addEventListener('click', () => {
+            playClickSound();
+            prevTrack();
+        });
+
+        function togglePlay() {
+            if (state.playlist.length === 0) return;
+            if (audio.paused) {
+                if (!audio.src && state.playlist[state.currentTrackIndex].src) {
+                    audio.src = state.playlist[state.currentTrackIndex].src;
+                }
+                audio.play().then(() => {
+                    state.isPlaying = true;
+                    npStatus.innerText = '▶';
+                }).catch(e => {});
+            } else {
+                audio.pause();
+                state.isPlaying = false;
+                npStatus.innerText = '⏸';
+            }
+        }
+
+        function playTrack(index) {
+            if (state.playlist.length === 0) return;
+            state.currentTrackIndex = index;
+            const track = state.playlist[index];
+            if (track.src) {
+                audio.src = track.src;
+                audio.play().then(() => {
+                    state.isPlaying = true;
+                    npStatus.innerText = '▶';
+                }).catch(e => {});
+            }
+            npTitle.innerText = track.title;
+            npArtist.innerText = track.artist;
+            npAlbum.innerText = track.album;
+        }
+
+        function nextTrack() {
+            if (state.playlist.length === 0) return;
+            state.currentTrackIndex = (state.currentTrackIndex + 1) % state.playlist.length;
+            playTrack(state.currentTrackIndex);
+        }
+
+        function prevTrack() {
+            if (state.playlist.length === 0) return;
+            state.currentTrackIndex = (state.currentTrackIndex - 1 + state.playlist.length) % state.playlist.length;
+            playTrack(state.currentTrackIndex);
+        }
+
+        audio.addEventListener('timeupdate', () => {
+            if (audio.duration) {
+                const currentMinutes = Math.floor(audio.currentTime / 60);
+                const currentSeconds = Math.floor(audio.currentTime % 60).toString().padStart(2, '0');
+                npCurrentTime.innerText = `${currentMinutes}:${currentSeconds}`;
+
+                const totalMinutes = Math.floor(audio.duration / 60);
+                const totalSeconds = Math.floor(audio.duration % 60).toString().padStart(2, '0');
+                npTotalTime.innerText = `${totalMinutes}:${totalSeconds}`;
+
+                npBarFill.style.width = `${(audio.currentTime / audio.duration) * 100}%`;
+            }
+        });
+
+        audio.addEventListener('ended', () => {
+            nextTrack();
+        });
+
+        document.getElementById('audio-file-input').addEventListener('change', (e) => {
+            const files = e.target.files;
+            if (files.length > 0) {
+                if (state.playlist.length > 0 && state.playlist[0].src === "") {
+                    state.playlist = [];
+                }
+
+                for (let file of files) {
+                    state.playlist.push({
+                        title: file.name.replace(/\.[^/.]+$/, ""),
+                        artist: "Música Local",
+                        album: "Biblioteca",
+                        src: URL.createObjectURL(file)
+                    });
+                }
+                
+                updateScreen();
+            }
+        });
+
+        // Suporte a toque circular / arraste no Click Wheel
+        let touchAngle = null;
+        const wheel = document.getElementById('click-wheel');
+
+        wheel.addEventListener('touchstart', (e) => {
+            const rect = wheel.getBoundingClientRect();
+            const x = e.touches[0].clientX - (rect.left + rect.width / 2);
+            const y = e.touches[0].clientY - (rect.top + rect.height / 2);
+            touchAngle = Math.atan2(y, x);
+        });
+
+        wheel.addEventListener('touchmove', (e) => {
+            if (touchAngle === null) return;
+            const rect = wheel.getBoundingClientRect();
+            const x = e.touches[0].clientX - (rect.left + rect.width / 2);
+            const y = e.touches[0].clientY - (rect.top + rect.height / 2);
+            const newAngle = Math.atan2(y, x);
+            
+            let diff = newAngle - touchAngle;
+            if (diff > 0.25) {
+                moveSelection(1);
+                touchAngle = newAngle;
+                playClickSound();
+            } else if (diff < -0.25) {
+                moveSelection(-1);
+                touchAngle = newAngle;
+                playClickSound();
+            }
+        });
+
+        function moveSelection(direction) {
+            let maxItems = 0;
+            let currentMenuEl = null;
+
+            if (state.currentScreen === 'main') {
+                maxItems = mainMenu.querySelectorAll('.menu-item').length;
+                currentMenuEl = mainMenu;
+            } else if (state.currentScreen === 'playlist') {
+                maxItems = state.playlist.length;
+                currentMenuEl = playlistMenu;
+            } else if (state.currentScreen === 'settings') {
+                maxItems = settingsMenu.querySelectorAll('.menu-item').length;
+                currentMenuEl = settingsMenu;
+            }
+
+            if (maxItems > 0) {
+                state.selectedIndex = (state.selectedIndex + direction + maxItems) % maxItems;
+                updateSelection(currentMenuEl);
+            }
+        }
+
+        // Atalhos de teclado para teste no PC
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { playClickSound(); moveSelection(1); }
+            else if (e.key === 'ArrowUp') { playClickSound(); moveSelection(-1); }
+            else if (e.key === 'Enter') { document.getElementById('btn-center').click(); }
+            else if (e.key === 'Backspace') { document.getElementById('btn-menu').click(); }
+            else if (e.key === ' ') { document.getElementById('btn-play').click(); e.preventDefault(); }
+        });
+
+        updateScreen();
+    </script>
+</body>
+</html>
